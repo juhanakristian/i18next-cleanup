@@ -1,0 +1,24 @@
+{
+  "name": "reacti18-next-cleaner",
+  "version": "0.0.1",
+  "description": "A CLI utility for removing unused translations from reacti18-next files.",
+  "main": "index.js",
+  "scripts": {
+    "test": "test"
+  },
+  "keywords": [
+    "react",
+    "i18next",
+    "i18"
+  ],
+  "author": "Juhana Jauhiainen <juhana.jauhiainen@gmail.com>",
+  "license": "MIT",
+  "dependencies": {
+    "yargs": "^16.1.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.14.0",
+    "prettier": "^2.2.1",
+    "typescript": "^4.1.2"
+  }
+}
