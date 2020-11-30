@@ -2,9 +2,14 @@
   "name": "reacti18-next-cleaner",
   "version": "0.0.1",
   "description": "A CLI utility for removing unused translations from reacti18-next files.",
-  "main": "index.js",
+  "main": "./dist/index.js",
+  "bin": "./dist/index.js",
+  "source": "./src/indext.ts",
   "scripts": {
-    "test": "test"
+    "test": "test",
+    "build": "tsc",
+    "run": "npm run build && node ./dist/index.js"
+
   },
   "keywords": [
     "react",
