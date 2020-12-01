@@ -4,9 +4,18 @@ interface CLIArguments {
   find: boolean
 }
 
+/*
+Find reacti18-next config, read translations and key separators etc.
+Scan project for 
+
+*/
 function main(args: CLIArguments) {
   if (args.find) {
     console.log("Finding unused translations...")
+
+    // Find i18next config
+    // read keys
+    // traverse project to find if keys are used
   }
 }
 
