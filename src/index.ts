@@ -11,7 +11,8 @@ interface CLIArguments {
 }
 
 async function list() {
-  return globAsync("**/*.(js|ts)", {
+  return globAsync("**/*.{js,ts}", {
+    ignore: ["**/node_modules/**"],
     cwd: ".",
   })
 }
