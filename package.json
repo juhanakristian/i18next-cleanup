@@ -9,7 +9,8 @@
     "test": "test",
     "lint": "tsc --noEmit && eslint 'src/**/*.ts'",
     "build": "tsc",
-    "run": "npm run build && node ./dist/index.js"
+    "run": "npm run build && node ./dist/index.js",
+    "prettier": "prettier ./src"
   },
   "keywords": [
     "react",
