@@ -1,12 +1,13 @@
-import fs, { readFileSync } from 'fs'
+import fs from 'fs'
 import { join } from 'path'
+import ora from 'ora'
 import util from 'util'
 import yargs, { Arguments } from 'yargs'
 
 import glob from 'glob'
 
 const globAsync = util.promisify(glob)
-const readFileAsync = util.promisify(readFileSync)
+const readFileAsync = util.promisify(fs.readFile)
 
 interface CLIArguments {
   remove: boolean
@@ -21,10 +22,9 @@ async function list() {
 
 async function findConfig() {
   const files = await list()
-  console.log(files)
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
-    console.log(contents)
+    console.log({ contents })
   }
 }
 
@@ -33,12 +33,17 @@ Find reacti18-next config, read translations and key separators etc.
 */
 async function main(args: CLIArguments) {
   console.log('Searching for i18next config...')
+  const spinner = ora('initializing').start()
   const config = await findConfig()
+
   if (args.remove) {
     // Find i18next config
     // read keys
     // traverse project to find if keys are used
   }
+
+  spinner.stop()
+  process.exit(0)
 }
 
 yargs

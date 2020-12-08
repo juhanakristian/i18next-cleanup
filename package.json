@@ -22,6 +22,7 @@
   "dependencies": {
     "@typescript-eslint/typescript-estree": "^4.9.0",
     "glob": "^7.1.6",
+    "ora": "^5.1.0",
     "yargs": "^16.1.1"
   },
   "devDependencies": {
