@@ -4,6 +4,13 @@ import ora from 'ora'
 import util from 'util'
 import yargs, { Arguments } from 'yargs'
 
+import {
+  AST_NODE_TYPES,
+  parse,
+  TSESTree,
+} from '@typescript-eslint/typescript-estree'
+import Traverser from 'eslint/lib/shared/traverser'
+
 import glob from 'glob'
 
 const globAsync = util.promisify(glob)
@@ -24,7 +31,23 @@ async function findConfig() {
   const files = await list()
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
-    console.log({ contents })
+    const ast = parse(contents)
+
+    Traverser.traverse(ast, {
+      enter(node: TSESTree.Node) {
+        switch (node.type) {
+          case AST_NODE_TYPES.MemberExpression:
+            if (
+              node.object.type === 'Identifier' &&
+              node.object.name === 'i18next' &&
+              node.property.type === 'Identifier' &&
+              node.property.name === 'init'
+            ) {
+              console.log('Found i18next init')
+            }
+        }
+      },
+    })
   }
 }
 
