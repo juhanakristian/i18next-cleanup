@@ -36,14 +36,29 @@ async function findConfig() {
     Traverser.traverse(ast, {
       enter(node: TSESTree.Node) {
         switch (node.type) {
-          case AST_NODE_TYPES.MemberExpression:
+          case AST_NODE_TYPES.CallExpression:
             if (
-              node.object.type === 'Identifier' &&
-              node.object.name === 'i18next' &&
-              node.property.type === 'Identifier' &&
-              node.property.name === 'init'
+              node.callee.type === 'MemberExpression' &&
+              node.callee.object.type === 'Identifier' &&
+              node.callee.object.name === 'i18next' &&
+              node.callee.property.type === 'Identifier' &&
+              node.callee.property.name === 'init'
             ) {
               console.log('Found i18next init')
+              if (node.arguments[0].type === 'ObjectExpression') {
+                const properties = node.arguments[0].properties
+                const resources = properties.find(
+                  (p) =>
+                    p.type === 'Property' &&
+                    p.key.type === 'Identifier' &&
+                    p.key.name === 'resources'
+                )
+
+                if (resources && resources.type === 'Property') {
+                  console.log(resources.value)
+                  console.log(resources.key)
+                }
+              }
             }
         }
       },
