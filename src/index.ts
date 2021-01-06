@@ -27,6 +27,22 @@ async function list() {
   })
 }
 
+function recursivelyGetKeys(
+  obj: TSESTree.ObjectExpression,
+  path = '',
+  keys: string[] = []
+) {
+  for (const p of obj.properties as any[]) {
+    const key = path.length > 0 ? `${path}.${p.key.name}` : p.key.name
+    if (p.value.type === 'ObjectExpression') {
+      recursivelyGetKeys(p.value, key, keys)
+    } else if (p.value.type === 'Literal') {
+      keys.push(key)
+    }
+  }
+  return keys
+}
+
 async function findConfig() {
   const files = await list()
   for (const file of files) {
@@ -55,8 +71,15 @@ async function findConfig() {
                 )
 
                 if (resources && resources.type === 'Property') {
-                  console.log(resources.value)
-                  console.log(resources.key)
+                  if (resources.value.type === 'ObjectExpression') {
+                    for (const p of resources.value
+                      .properties as TSESTree.Property[]) {
+                      if (p.value.type === 'ObjectExpression') {
+                        const keys = recursivelyGetKeys(p.value)
+                        console.log(keys)
+                      }
+                    }
+                  }
                 }
               }
             }
