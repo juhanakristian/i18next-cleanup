@@ -22,7 +22,7 @@ interface CLIArguments {
 
 async function list() {
   return globAsync('**/*.{js,ts}', {
-    ignore: ['**/node_modules/**'],
+    ignore: ['**/node_modules/**', '**/index.js'],
     cwd: '.',
   })
 }
@@ -35,7 +35,7 @@ function recursivelyGetKeys(
   for (const p of obj.properties as any[]) {
     const key = path.length > 0 ? `${path}.${p.key.name}` : p.key.name
     if (p.value.type === 'ObjectExpression') {
-      recursivelyGetKeys(p.value, key, keys)
+      const k = recursivelyGetKeys(p.value, key, keys)
     } else if (p.value.type === 'Literal') {
       keys.push(key)
     }
@@ -43,13 +43,13 @@ function recursivelyGetKeys(
   return keys
 }
 
-async function findConfig() {
+async function findKeys(): Promise<string[]> {
   const files = await list()
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
-    const ast = parse(contents)
+    const ast = parse(contents, { jsx: true })
 
-    Traverser.traverse(ast, {
+    await Traverser.traverse(ast, {
       enter(node: TSESTree.Node) {
         switch (node.type) {
           case AST_NODE_TYPES.CallExpression:
@@ -61,6 +61,7 @@ async function findConfig() {
               node.callee.property.name === 'init'
             ) {
               console.log('Found i18next init')
+              let keys: string[] = []
               if (node.arguments[0].type === 'ObjectExpression') {
                 const properties = node.arguments[0].properties
                 const resources = properties.find(
@@ -75,18 +76,43 @@ async function findConfig() {
                     for (const p of resources.value
                       .properties as TSESTree.Property[]) {
                       if (p.value.type === 'ObjectExpression') {
-                        const keys = recursivelyGetKeys(p.value)
+                        keys = keys.concat(recursivelyGetKeys(p.value))
                         console.log(keys)
                       }
                     }
                   }
                 }
+
+                return keys
               }
             }
         }
       },
     })
   }
+
+  return []
+}
+
+async function checkUsage(keys: string[]) {
+  const files = await list()
+  let unused = Array.from(keys)
+  for (const file of files) {
+    const contents = await readFileAsync(file, { encoding: 'utf8' })
+    const ast = parse(contents)
+
+    Traverser.traverse(ast, {
+      enter(node: TSESTree.Node) {
+        switch (node.type) {
+          case AST_NODE_TYPES.Literal:
+            unused = unused.filter((v) => v !== node.value)
+            break
+        }
+      },
+    })
+  }
+
+  return unused
 }
 
 /*
@@ -95,7 +121,11 @@ Find reacti18-next config, read translations and key separators etc.
 async function main(args: CLIArguments) {
   console.log('Searching for i18next config...')
   const spinner = ora('initializing').start()
-  const config = await findConfig()
+  const keys = await findKeys()
+  console.log(keys)
+
+  const unused = await checkUsage(keys)
+  console.log(unused)
 
   if (args.remove) {
     // Find i18next config
