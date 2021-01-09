@@ -3,6 +3,7 @@ import { join } from 'path'
 import ora from 'ora'
 import util from 'util'
 import yargs, { Arguments } from 'yargs'
+import chalk from 'chalk'
 
 import {
   AST_NODE_TYPES,
@@ -45,6 +46,7 @@ function recursivelyGetKeys(
 
 async function findKeys(): Promise<string[]> {
   const files = await list()
+  let keys: string[] = []
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
     const ast = parse(contents, { jsx: true })
@@ -60,8 +62,7 @@ async function findKeys(): Promise<string[]> {
               node.callee.property.type === 'Identifier' &&
               node.callee.property.name === 'init'
             ) {
-              console.log('Found i18next init')
-              let keys: string[] = []
+              console.log(chalk.blue('Found i18next init'))
               if (node.arguments[0].type === 'ObjectExpression') {
                 const properties = node.arguments[0].properties
                 const resources = properties.find(
@@ -77,13 +78,10 @@ async function findKeys(): Promise<string[]> {
                       .properties as TSESTree.Property[]) {
                       if (p.value.type === 'ObjectExpression') {
                         keys = keys.concat(recursivelyGetKeys(p.value))
-                        console.log(keys)
                       }
                     }
                   }
                 }
-
-                return keys
               }
             }
         }
@@ -91,7 +89,7 @@ async function findKeys(): Promise<string[]> {
     })
   }
 
-  return []
+  return keys
 }
 
 async function checkUsage(keys: string[]) {
@@ -99,7 +97,7 @@ async function checkUsage(keys: string[]) {
   let unused = Array.from(keys)
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
-    const ast = parse(contents)
+    const ast = parse(contents, { jsx: true })
 
     Traverser.traverse(ast, {
       enter(node: TSESTree.Node) {
@@ -119,21 +117,15 @@ async function checkUsage(keys: string[]) {
 Find reacti18-next config, read translations and key separators etc.
 */
 async function main(args: CLIArguments) {
-  console.log('Searching for i18next config...')
-  const spinner = ora('initializing').start()
+  console.log(chalk.blue('Searching for i18next config...'))
+  // const spinner = ora('initializing').start()
   const keys = await findKeys()
-  console.log(keys)
 
   const unused = await checkUsage(keys)
+  console.log(chalk.red(`Found ${unused.length} unused translations`))
   console.log(unused)
 
-  if (args.remove) {
-    // Find i18next config
-    // read keys
-    // traverse project to find if keys are used
-  }
-
-  spinner.stop()
+  // spinner.stop()
   process.exit(0)
 }
 
