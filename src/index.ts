@@ -1,9 +1,8 @@
 import fs from 'fs'
-import { join } from 'path'
-import ora from 'ora'
 import util from 'util'
 import yargs, { Arguments } from 'yargs'
 import chalk from 'chalk'
+import termSize from 'term-size'
 
 import {
   AST_NODE_TYPES,
@@ -31,12 +30,12 @@ async function list() {
 function recursivelyGetKeys(
   obj: TSESTree.ObjectExpression,
   path = '',
-  keys: string[] = []
+  keys: string[] = [] // keys is mutated
 ) {
   for (const p of obj.properties as any[]) {
     const key = path.length > 0 ? `${path}.${p.key.name}` : p.key.name
     if (p.value.type === 'ObjectExpression') {
-      const k = recursivelyGetKeys(p.value, key, keys)
+      recursivelyGetKeys(p.value, key, keys)
     } else if (p.value.type === 'Literal') {
       keys.push(key)
     }
@@ -44,9 +43,14 @@ function recursivelyGetKeys(
   return keys
 }
 
-async function findKeys(): Promise<string[]> {
+interface UnusedTranslationsResult {
+  language: string
+  translations: string[]
+}
+
+async function findKeys(): Promise<UnusedTranslationsResult[]> {
   const files = await list()
-  let keys: string[] = []
+  const results: UnusedTranslationsResult[] = []
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
     const ast = parse(contents, { jsx: true })
@@ -62,7 +66,7 @@ async function findKeys(): Promise<string[]> {
               node.callee.property.type === 'Identifier' &&
               node.callee.property.name === 'init'
             ) {
-              console.log(chalk.blue('Found i18next init'))
+              console.log(chalk.blue(`Found i18next init in ${file}`))
               if (node.arguments[0].type === 'ObjectExpression') {
                 const properties = node.arguments[0].properties
                 const resources = properties.find(
@@ -76,8 +80,14 @@ async function findKeys(): Promise<string[]> {
                   if (resources.value.type === 'ObjectExpression') {
                     for (const p of resources.value
                       .properties as TSESTree.Property[]) {
-                      if (p.value.type === 'ObjectExpression') {
-                        keys = keys.concat(recursivelyGetKeys(p.value))
+                      if (
+                        p.value.type === 'ObjectExpression' &&
+                        p.key.type === 'Identifier'
+                      ) {
+                        results.push({
+                          language: p.key.name,
+                          translations: recursivelyGetKeys(p.value),
+                        })
                       }
                     }
                   }
@@ -89,12 +99,18 @@ async function findKeys(): Promise<string[]> {
     })
   }
 
-  return keys
+  return results
 }
 
-async function checkUsage(keys: string[]) {
+async function checkUsage(unused: UnusedTranslationsResult[]) {
   const files = await list()
-  let unused = Array.from(keys)
+  let keys = Array.from(
+    new Set(
+      unused.reduce((result: string[], current: UnusedTranslationsResult) => {
+        return result.concat(current.translations)
+      }, [])
+    )
+  )
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
     const ast = parse(contents, { jsx: true })
@@ -103,27 +119,38 @@ async function checkUsage(keys: string[]) {
       enter(node: TSESTree.Node) {
         switch (node.type) {
           case AST_NODE_TYPES.Literal:
-            unused = unused.filter((v) => v !== node.value)
+            keys = keys.filter((v) => v !== node.value)
             break
         }
       },
     })
   }
 
-  return unused
+  return keys
 }
 
 /*
 Find reacti18-next config, read translations and key separators etc.
 */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function main(args: CLIArguments) {
   console.log(chalk.blue('Searching for i18next config...'))
   // const spinner = ora('initializing').start()
   const keys = await findKeys()
 
   const unused = await checkUsage(keys)
+
+  const { columns } = termSize()
+
+  const divider = chalk.grey('-'.repeat(columns))
+  console.log(divider)
+
   console.log(chalk.red(`Found ${unused.length} unused translations`))
-  console.log(unused)
+
+  console.log(divider)
+  for (const translation of unused) {
+    console.log(chalk.green(`${translation}`))
+  }
 
   // spinner.stop()
   process.exit(0)
