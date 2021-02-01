@@ -1,4 +1,4 @@
-# i18-next cleaner
+# unused-translations
 
 **Find unused i18-next translations in your JavaScript/TypeScript project**
 
@@ -18,9 +18,11 @@ It will find your i18-next configuration and read all the translation keys. Then
 
 `i18-next-cleaner` will display the unused translation keys after finishing the analysis.
 
-## Gotchas
+![](output.png)
 
-`i18-next-cleaner` only supports translations which are directly in you config.
+## How it works
+
+`i18-next-cleaner` works by searching your project for the i18-next `init` call, and extracting the translation keys from the object passed to it.
 
 
 

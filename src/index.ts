@@ -1,6 +1,6 @@
-import fs from 'fs'
+import fs, { access } from 'fs'
 import util from 'util'
-import yargs, { Arguments } from 'yargs'
+import yargs, { Arguments, string } from 'yargs'
 import chalk from 'chalk'
 import termSize from 'term-size'
 
@@ -43,14 +43,14 @@ function recursivelyGetKeys(
   return keys
 }
 
-interface UnusedTranslationsResult {
+interface Translation {
   language: string
-  translations: string[]
+  key: string
 }
 
-async function findKeys(): Promise<UnusedTranslationsResult[]> {
+async function collectTranslations(): Promise<Translation[]> {
   const files = await list()
-  const results: UnusedTranslationsResult[] = []
+  const results: Translation[] = []
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
     const ast = parse(contents, { jsx: true })
@@ -66,7 +66,7 @@ async function findKeys(): Promise<UnusedTranslationsResult[]> {
               node.callee.property.type === 'Identifier' &&
               node.callee.property.name === 'init'
             ) {
-              console.log(chalk.blue(`Found i18next init in ${file}`))
+              console.log(chalk.white(`Found i18next init in ${file}`))
               if (node.arguments[0].type === 'ObjectExpression') {
                 const properties = node.arguments[0].properties
                 const resources = properties.find(
@@ -84,10 +84,13 @@ async function findKeys(): Promise<UnusedTranslationsResult[]> {
                         p.value.type === 'ObjectExpression' &&
                         p.key.type === 'Identifier'
                       ) {
-                        results.push({
-                          language: p.key.name,
-                          translations: recursivelyGetKeys(p.value),
-                        })
+                        const translations = recursivelyGetKeys(p.value)
+                        for (const translation of translations) {
+                          results.push({
+                            language: p.key.name,
+                            key: translation,
+                          })
+                        }
                       }
                     }
                   }
@@ -102,15 +105,9 @@ async function findKeys(): Promise<UnusedTranslationsResult[]> {
   return results
 }
 
-async function checkUsage(unused: UnusedTranslationsResult[]) {
+async function checkUsage(translations: Translation[]) {
   const files = await list()
-  let keys = Array.from(
-    new Set(
-      unused.reduce((result: string[], current: UnusedTranslationsResult) => {
-        return result.concat(current.translations)
-      }, [])
-    )
-  )
+  let unused = Array.from(translations)
   for (const file of files) {
     const contents = await readFileAsync(file, { encoding: 'utf8' })
     const ast = parse(contents, { jsx: true })
@@ -119,58 +116,68 @@ async function checkUsage(unused: UnusedTranslationsResult[]) {
       enter(node: TSESTree.Node) {
         switch (node.type) {
           case AST_NODE_TYPES.Literal:
-            keys = keys.filter((v) => v !== node.value)
+            unused = unused.filter((v) => v.key !== node.value)
             break
         }
       },
     })
   }
 
-  return keys
+  return unused
+}
+
+function printResults(unused: Translation[]) {
+  const { columns } = termSize()
+
+  const firstColumn = 5
+  const secondColumn = columns - firstColumn - 1
+  console.log(chalk.red(`\n${unused.length} unused translations`))
+
+  const languages = new Set(
+    unused.reduce(
+      (acc: string[], translation: Translation) => [
+        ...acc,
+        translation.language,
+      ],
+      []
+    )
+  )
+
+  for (const language of Array.from(languages)) {
+    const languageTranslations = unused.filter((t) => t.language === language)
+
+    const lines = [
+      chalk.grey('─'.repeat(firstColumn) + '┬' + '─'.repeat(secondColumn)),
+      chalk.grey(' '.repeat(firstColumn) + '│ ') + chalk.blue(`${language}`),
+      chalk.grey('─'.repeat(firstColumn) + '┼' + '─'.repeat(secondColumn)),
+      ...languageTranslations.map(
+        (t, index) =>
+          chalk.grey(`${index + 1}`.padStart(4, ' ') + ' │ ') +
+          chalk.white(t.key)
+      ),
+      chalk.grey('─'.repeat(firstColumn) + '┴' + '─'.repeat(secondColumn)),
+    ]
+
+    console.log(`\n${lines.join('\n')}\n`)
+  }
 }
 
 /*
 Find reacti18-next config, read translations and key separators etc.
 */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-async function main(args: CLIArguments) {
-  console.log(chalk.blue('Searching for i18next config...'))
-  // const spinner = ora('initializing').start()
-  const keys = await findKeys()
+async function main() {
+  console.log(chalk.white('Searching for i18next config...'))
 
-  const unused = await checkUsage(keys)
+  const translations = await collectTranslations()
+  const unused = await checkUsage(translations)
+  printResults(unused)
 
-  const { columns } = termSize()
-
-  const divider = chalk.grey('-'.repeat(columns))
-  console.log(divider)
-
-  console.log(chalk.red(`Found ${unused.length} unused translations`))
-
-  console.log(divider)
-  for (const translation of unused) {
-    console.log(chalk.green(`${translation}`))
-  }
-
-  // spinner.stop()
-  process.exit(0)
+  process.exit(unused.length == 0 ? 0 : 1)
 }
 
 yargs
   .scriptName('reacti18-next-cleaner')
-  .usage('$0 <cmd> [args]')
-  .command(
-    '*',
-    'scan your project for unused translations',
-    (yargs) => {
-      yargs.option('remove', {
-        alias: 'r',
-        type: 'boolean',
-        describe: 'remove unused translations',
-      })
-    },
-    function (argv: Arguments<CLIArguments>) {
-      return main({ remove: argv.remove })
-    }
-  )
+  .usage('$0 <cmd>')
+  .command('*', 'scan your project for unused translations', main)
   .help().argv
