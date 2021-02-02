@@ -1,6 +1,6 @@
-import fs, { access } from 'fs'
+import fs from 'fs'
 import util from 'util'
-import yargs, { Arguments, string } from 'yargs'
+import yargs from 'yargs'
 import chalk from 'chalk'
 import termSize from 'term-size'
 
@@ -16,15 +16,18 @@ import glob from 'glob'
 const globAsync = util.promisify(glob)
 const readFileAsync = util.promisify(fs.readFile)
 
-interface CLIArguments {
-  remove: boolean
-}
-
 async function list() {
   return globAsync('**/*.{js,ts}', {
     ignore: ['**/node_modules/**', '**/index.js'],
     cwd: '.',
   })
+}
+
+function findDeclaration(name: string, file: string) {
+  // Read file to AST
+  // Try to find VariableDeclaration with name == name
+  // If it fails, search for ImportDeclaration with name == name
+  // Return Translations or a TSESTree.Node
 }
 
 function recursivelyGetKeys(
@@ -84,6 +87,7 @@ async function collectTranslations(): Promise<Translation[]> {
                         p.value.type === 'ObjectExpression' &&
                         p.key.type === 'Identifier'
                       ) {
+                        // Found a language with inline translations
                         const translations = recursivelyGetKeys(p.value)
                         for (const translation of translations) {
                           results.push({
@@ -91,6 +95,12 @@ async function collectTranslations(): Promise<Translation[]> {
                             key: translation,
                           })
                         }
+                      } else if (
+                        p.value.type === 'Identifier' &&
+                        p.key.type === 'Identifier'
+                      ) {
+                        // Found a language with translations defined somewhere else
+                        // Search through VariableDeclarations and ImportDeclarations in this file
                       }
                     }
                   }
@@ -162,10 +172,6 @@ function printResults(unused: Translation[]) {
   }
 }
 
-/*
-Find reacti18-next config, read translations and key separators etc.
-*/
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 async function main() {
   console.log(chalk.white('Searching for i18next config...'))
 
@@ -173,6 +179,7 @@ async function main() {
   const unused = await checkUsage(translations)
   printResults(unused)
 
+  // Return 1 if unused translations are found.
   process.exit(unused.length == 0 ? 0 : 1)
 }
 
