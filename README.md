@@ -26,3 +26,5 @@ It will find your i18-next configuration and read all the translation keys. Then
 
 
 ## Limitations
+
+Currently `i18next-cleanup` doesn't support translations defined outside the i18next config object in the `init` [call](https://www.i18next.com/overview/api). 
