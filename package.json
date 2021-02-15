@@ -1,10 +1,12 @@
 {
   "name": "i18next-cleanup",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "description": "A CLI utility for removing unused translations from i18next files.",
   "main": "./dist/index.js",
-  "bin": "./dist/index.js",
-  "source": "./src/indext.ts",
+  "bin": {
+    "i18next-cleanup": "bin/index.js"
+  },
+  "source": "./src/index.ts",
   "scripts": {
     "test": "test",
     "lint": "tsc --noEmit && eslint 'src/**/*.ts'",
@@ -12,6 +14,11 @@
     "run": "npm run build && node ./dist/index.js",
     "prettier": "prettier ./src"
   },
+  "files": [
+    "bin",
+    "dist",
+    "src"
+  ],
   "keywords": [
     "i18next",
     "react",

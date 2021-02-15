@@ -25,4 +25,4 @@ It will find your i18-next configuration and read all the translation keys. Then
 `i18next-cleanup` works by searching your project for the i18-next `init` call, and extracting the translation keys from the object passed to it.
 
 
-
+## Limitations
