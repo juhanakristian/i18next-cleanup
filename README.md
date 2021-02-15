@@ -18,7 +18,7 @@ It will find your i18-next configuration and read all the translation keys. Then
 
 `i18next-cleanup` will display the unused translation keys after finishing the analysis.
 
-![](output.png)
+<img src="output.png" width="600">
 
 ## How it works
 
