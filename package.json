@@ -1,7 +1,7 @@
 {
-  "name": "reacti18-next-cleaner",
+  "name": "i18next-cleanup",
   "version": "0.0.1",
-  "description": "A CLI utility for removing unused translations from reacti18-next files.",
+  "description": "A CLI utility for removing unused translations from i18next files.",
   "main": "./dist/index.js",
   "bin": "./dist/index.js",
   "source": "./src/indext.ts",
@@ -13,8 +13,8 @@
     "prettier": "prettier ./src"
   },
   "keywords": [
-    "react",
     "i18next",
+    "react",
     "i18"
   ],
   "author": "Juhana Jauhiainen <juhana.jauhiainen@gmail.com>",

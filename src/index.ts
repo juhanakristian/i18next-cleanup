@@ -23,13 +23,6 @@ async function list() {
   })
 }
 
-function findDeclaration(name: string, file: string) {
-  // Read file to AST
-  // Try to find VariableDeclaration with name == name
-  // If it fails, search for ImportDeclaration with name == name
-  // Return Translations or a TSESTree.Node
-}
-
 function recursivelyGetKeys(
   obj: TSESTree.ObjectExpression,
   path = '',
@@ -100,7 +93,19 @@ async function collectTranslations(): Promise<Translation[]> {
                         p.key.type === 'Identifier'
                       ) {
                         // Found a language with translations defined somewhere else
+
+                        // TODO: Support translations imported from other files or defined outside the config object
                         // Search through VariableDeclarations and ImportDeclarations in this file
+                        console.log(
+                          chalk.yellow(
+                            `\n'${p.value.name}' is not an object defined inside i18next config`
+                          )
+                        )
+                        console.error(
+                          chalk.red(
+                            'Only translations defined inside the i18next config are supported!'
+                          )
+                        )
                       }
                     }
                   }
@@ -184,7 +189,7 @@ async function main() {
 }
 
 yargs
-  .scriptName('reacti18-next-cleaner')
+  .scriptName('i18next-cleanup')
   .usage('$0 <cmd>')
   .command('*', 'scan your project for unused translations', main)
   .help().argv
